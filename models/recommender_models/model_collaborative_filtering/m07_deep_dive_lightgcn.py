@@ -39,7 +39,7 @@ item_file = "../../tests/resources/deeprec/lightgcn/item_embeddings.csv"
 def run_model():
     df = movielens.load_pandas_df(size=MOVIELENS_DATA_SIZE)
 
-    df.head()
+    print(df.head())
 
     train, test = python_stratified_split(df, ratio=0.75)
 

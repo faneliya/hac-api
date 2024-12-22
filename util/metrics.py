@@ -5,6 +5,7 @@ from sklearn.metrics import mean_squared_error
 
 
 class Metrics:
+
     def mae(self, true_ratings: List[float], pred_ratings: List[float]) -> float:
         return mean_absolute_error(true_ratings, pred_ratings)
 
