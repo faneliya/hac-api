@@ -89,3 +89,11 @@ print("MAP:\t%f" % eval_map,
       "NDCG:\t%f" % eval_ndcg,
       "Precision@K:\t%f" % eval_precision,
       "Recall@K:\t%f" % eval_recall, sep='\n')
+
+# Record results for tests - ignore this cell
+store_metadata("map", eval_map)
+store_metadata("ndcg", eval_ndcg)
+store_metadata("precision", eval_precision)
+store_metadata("recall", eval_recall)
+store_metadata("train_time", train_time.interval)
+store_metadata("test_time", test_time.interval)
