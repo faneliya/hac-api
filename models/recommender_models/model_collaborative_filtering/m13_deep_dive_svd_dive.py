@@ -22,14 +22,14 @@ from recommenders.models.surprise.surprise_utils import (
 from recommenders.utils.notebook_utils import store_metadata
 
 
-print(f"System version: {sys.version}")
-print(f"Surprise version: {surprise.__version__}")
-
 
 def run_model():
+
+    print(f"System version: {sys.version}")
+    print(f"Surprise version: {surprise.__version__}")
+
     # Top k items to recommend
     TOP_K = 10
-
     # Select MovieLens data size: 100k, 1m, 10m, or 20m
     MOVIELENS_DATA_SIZE = "100k"
 
@@ -38,7 +38,6 @@ def run_model():
     )
 
     print(data.head())
-
     train, test = python_random_split(data, 0.75)
 
     # 'reader' is being used to get rating scale (for MovieLens, the scale is [1, 5]).
@@ -111,10 +110,6 @@ def run_model():
     store_metadata("recall", eval_recall)
     store_metadata("train_time", train_time.interval)
     store_metadata("test_time", test_time.interval)
-
-
-
-
 
 
 

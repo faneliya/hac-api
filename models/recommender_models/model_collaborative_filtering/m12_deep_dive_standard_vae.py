@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 #%matplotlib inline
 import seaborn as sns
-sns.set()
+#sns.set()
 import tensorflow as tf
 import keras
 
@@ -20,19 +20,21 @@ from recommenders.datasets.sparse import AffinityMatrix
 from recommenders.utils.python_utils import binarize
 from recommenders.models.vae.standard_vae import StandardVAE
 
-print("System version: {}".format(sys.version))
-print("Pandas version: {}".format(pd.__version__))
-print("Tensorflow version: {}".format(tf.__version__))
-print("Keras version: {}".format(keras.__version__))
+import util.constant as ENV
+import warnings
 
 
 def run_model():
+
+    print("System version: {}".format(sys.version))
+    print("Pandas version: {}".format(pd.__version__))
+    print("Tensorflow version: {}".format(tf.__version__))
+    print("Keras version: {}".format(keras.__version__))
+
     # top 100 items to recommend
     TOP_K = 100
-
     # Select MovieLens data size: 100k, 1m, 10m, or 20m
     MOVIELENS_DATA_SIZE = '1m'
-
     # Model parameters
     HELDOUT_USERS = 600  # CHANGE FOR DIFFERENT DATASIZE
     INTERMEDIATE_DIM = 200
@@ -43,45 +45,48 @@ def run_model():
     # temporary Path to save the optimal model's weights
     #tmp_dir = TemporaryDirectory()
     tmp_dir =os.path.dirname('./')
+    tmp_dir = f"{ENV.DATA_PATH}/m12/"
     WEIGHTS_PATH = os.path.join(tmp_dir, "svae_weights.hdf5")
+    print("WEIGHTS_PATH: {}".format(WEIGHTS_PATH))
 
     SEED = 98765
+
 
     df = movielens.load_pandas_df(
         size=MOVIELENS_DATA_SIZE,
         header=["userID", "itemID", "rating", "timestamp"]
     )
 
+    if os.path.isfile(f"{ENV.DATA_PATH}/m12/movielens.pickle"):
+        df = pd.read_pickle(f"{ENV.DATA_PATH}/m12/movielens.pickle")
+    else:
+        df = movielens.load_pandas_df(
+            size=MOVIELENS_DATA_SIZE,
+            header=["userID", "itemID", "rating", "timestamp"])
+        df.to_pickle(f"{ENV.DATA_PATH}/m12/movielens.pickle")
+
     df.head()
-
     print(df.shape)
-
     # Binarize the data (only keep ratings >= 4)
     df_preferred = df[df['rating'] > 3.5]
     print(df_preferred.shape)
     df_low_rating = df[df['rating'] <= 3.5]
-
     # df.head()
     df_preferred.head(10)
-
     print(df_low_rating)
 
     # Keep users who clicked on at least 5 movies
     df = min_rating_filter_pandas(df_preferred, min_rating=5, filter_by="user")
-
     # Keep movies that were clicked on by at least on 1 user
     df = min_rating_filter_pandas(df, min_rating=1, filter_by="item")
-
     # Obtain both usercount and itemcount after filtering
     usercount = df[['userID']].groupby('userID', as_index=False).size()
     itemcount = df[['itemID']].groupby('itemID', as_index=False).size()
 
     # Compute sparsity after filtering
     sparsity = 1. * df.shape[0] / (usercount.shape[0] * itemcount.shape[0])
-
     print("After filtering, there are %d watching events from %d users and %d movies (sparsity: %.3f%%)" %
           (df.shape[0], usercount.shape[0], itemcount.shape[0], sparsity * 100))
-
     unique_users = sorted(df.userID.unique())
     np.random.seed(SEED)
     unique_users = np.random.permutation(unique_users)
@@ -89,47 +94,36 @@ def run_model():
     # Create train/validation/test users
     n_users = len(unique_users)
     print("Number of unique users:", n_users)
-
     train_users = unique_users[:(n_users - HELDOUT_USERS * 2)]
-    print("\nNumber of training users:", len(train_users))
-
+    print("Number of training users:", len(train_users))
     val_users = unique_users[(n_users - HELDOUT_USERS * 2): (n_users - HELDOUT_USERS)]
-    print("\nNumber of validation users:", len(val_users))
-
+    print("Number of validation users:", len(val_users))
     test_users = unique_users[(n_users - HELDOUT_USERS):]
-    print("\nNumber of test users:", len(test_users))
-
+    print("Number of test users:", len(test_users))
     # For training set keep only users that are in train_users list
     train_set = df.loc[df['userID'].isin(train_users)]
     print("Number of training observations: ", train_set.shape[0])
-
     # For validation set keep only users that are in val_users list
     val_set = df.loc[df['userID'].isin(val_users)]
-    print("\nNumber of validation observations: ", val_set.shape[0])
-
+    print("Number of validation observations: ", val_set.shape[0])
     # For test set keep only users that are in test_users list
     test_set = df.loc[df['userID'].isin(test_users)]
-    print("\nNumber of test observations: ", test_set.shape[0])
-
+    print("Number of test observations: ", test_set.shape[0])
     # train_set/val_set/test_set contain user - movie interactions with rating 4 or 5
     # Obtain list of unique movies used in training set
     unique_train_items = pd.unique(train_set['itemID'])
     print("Number of unique movies that rated in training set", unique_train_items.size)
-
     # For validation set keep only movies that used in training set
     val_set = val_set.loc[val_set['itemID'].isin(unique_train_items)]
     print("Number of validation observations after filtering: ", val_set.shape[0])
-
     # For test set keep only movies that used in training set
     test_set = test_set.loc[test_set['itemID'].isin(unique_train_items)]
-    print("\nNumber of test observations after filtering: ", test_set.shape[0])
+    print("Number of test observations after filtering: ", test_set.shape[0])
 
     # Instantiate the sparse matrix generation for train, validation and test sets
     # use list of unique items from training set for all sets
     am_train = AffinityMatrix(df=train_set, items_list=unique_train_items)
-
     am_val = AffinityMatrix(df=val_set, items_list=unique_train_items)
-
     am_test = AffinityMatrix(df=test_set, items_list=unique_train_items)
 
     # Obtain the sparse matrix for train, validation and test sets
@@ -262,7 +256,6 @@ def run_model():
                                                        k=TOP_K,
                                                        remove_seen=True
                                                        )
-
         # Convert sparse matrix back to df
         top_k_df = am_test.map_back_sparse(top_k, kind='prediction')
         test_df = am_test.map_back_sparse(test_data_te_ratings,
@@ -272,7 +265,6 @@ def run_model():
 
     # Use the ranking metrics for evaluation
     eval_map_2 = map_at_k(test_df, top_k_df, col_prediction='prediction', k=TOP_K)
-
     eval_ndcg_2 = ndcg_at_k(test_df, top_k_df, col_prediction='prediction', k=TOP_K)
     eval_precision_2 = precision_at_k(test_df, top_k_df, col_prediction='prediction', k=TOP_K)
     eval_recall_2 = recall_at_k(test_df, top_k_df, col_prediction='prediction', k=TOP_K)
@@ -308,9 +300,7 @@ def run_model():
     print("Took {} seconds for training.".format(t))
 
     model_with_anneal.display_metrics()
-
     ndcg_val_with_anneal = model_with_anneal.ndcg_per_epoch()
-
     # Get optimal beta
     optimal_beta = model_with_anneal.get_optimal_beta()
     print("The optimal beta is: ", optimal_beta)

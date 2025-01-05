@@ -1,5 +1,7 @@
 import sys
 import surprise
+import os
+import pandas as pd
 
 from recommenders.utils.timer import Timer
 from recommenders.datasets import movielens
@@ -20,24 +22,27 @@ from recommenders.models.surprise.surprise_utils import (
     compute_ranking_predictions,
 )
 from recommenders.utils.notebook_utils import store_metadata
-
-
-print(f"System version: {sys.version}")
-print(f"Surprise version: {surprise.__version__}")
-
-# Top k items to recommend
-TOP_K = 10
-
-# Select MovieLens data size: 100k, 1m, 10m, or 20m
-MOVIELENS_DATA_SIZE = "100k"
+import util.constant as ENV
 
 
 def run_model():
-    data = movielens.load_pandas_df(
-        size=MOVIELENS_DATA_SIZE, header=["userID", "itemID", "rating"]
-    )
 
-    data.head()
+    print("m01_deep_dive_spark_als")
+    print(f"System version: {sys.version}")
+    print(f"Surprise version: {surprise.__version__}")
+
+    # Top k items to recommend
+    TOP_K = 10
+    # Select MovieLens data size: 100k, 1m, 10m, or 20m
+    MOVIELENS_DATA_SIZE = "100k"
+
+    if os.path.isfile(f"{ENV.DATA_PATH}/m01/movielens.pickle"):
+        data = pd.read_pickle(f"{ENV.DATA_PATH}/m01/movielens.pickle")
+    else:
+        data = movielens.load_pandas_df(
+            size=MOVIELENS_DATA_SIZE, header=["userID", "itemID", "rating"]
+        )
+        data.to_pickle(f"{ENV.DATA_PATH}/m01/movies.pkl")
 
     train, test = python_random_split(data, 0.75)
 
@@ -112,3 +117,4 @@ def run_model():
     store_metadata("recall", eval_recall)
     store_metadata("train_time", train_time.interval)
     store_metadata("test_time", test_time.interval)
+

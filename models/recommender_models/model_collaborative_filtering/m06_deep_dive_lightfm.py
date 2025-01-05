@@ -25,42 +25,58 @@ from recommenders.models.lightfm.lightfm_utils import (
     similar_items,
 )
 from recommenders.utils.notebook_utils import store_metadata
-
-print("System version: {}".format(sys.version))
-print("LightFM version: {}".format(lightfm.__version__))
-# Select MovieLens data size
-MOVIELENS_DATA_SIZE = '100k'
-
-# default number of recommendations
-K = 10
-# percentage of data used for testing
-TEST_PERCENTAGE = 0.25
-# model learning rate
-LEARNING_RATE = 0.25
-# no of latent factors
-NO_COMPONENTS = 20
-# no of epochs to fit model
-NO_EPOCHS = 20
-# no of threads to fit model
-NO_THREADS = 32
-# regularisation for both user and item features
-ITEM_ALPHA = 1e-6
-USER_ALPHA = 1e-6
-
-# seed for pseudonumber generations
-SEED = 42
+import util.constant as ENV
+import warnings
 
 def run_model():
+
+    print("m06_deep_dive_lightfm started")
+    print("System version: {}".format(sys.version))
+    print("LightFM version: {}".format(lightfm.__version__))
+    # Select MovieLens data size
+
+    MOVIELENS_DATA_SIZE = '100k'
+
+    # default number of recommendations
+    K = 10
+    # percentage of data used for testing
+    TEST_PERCENTAGE = 0.25
+    # model learning rate
+    LEARNING_RATE = 0.25
+    # no of latent factors
+    NO_COMPONENTS = 20
+    # no of epochs to fit model
+    NO_EPOCHS = 20
+    # no of threads to fit model
+    NO_THREADS = 32
+    # regularisation for both user and item features
+    ITEM_ALPHA = 1e-6
+    USER_ALPHA = 1e-6
+
+    # seed for pseudonumber generations
+    SEED = 42
+
+    if os.path.isfile(f"{ENV.DATA_PATH}/m06/movielens.pickle"):
+        data = pd.read_pickle(f"{ENV.DATA_PATH}/m06/movielens.pickle")
+    else:
+        data = movielens.load_pandas_df(
+            size=MOVIELENS_DATA_SIZE,
+            genres_col='genre',
+            header=["userID", "itemID", "rating"]
+        )
+        data.to_pickle(f"{ENV.DATA_PATH}/m06/movielens.pickle")
+
+    '''
     data = movielens.load_pandas_df(
         size=MOVIELENS_DATA_SIZE,
         genres_col='genre',
         header=["userID", "itemID", "rating"]
     )
+    '''
+
     # quick look at the data
     data.sample(5, random_state=SEED)
-
     dataset = Dataset()
-
     dataset.fit(users=data['userID'],
                 items=data['itemID'])
 
@@ -77,6 +93,7 @@ def run_model():
     print(f"Shape of train interactions: {train_interactions.shape}")
     print(f"Shape of test interactions: {test_interactions.shape}")
 
+    ####################################################################################################################
     model1 = LightFM(loss='warp', no_components=NO_COMPONENTS,
                      learning_rate=LEARNING_RATE,
                      random_state=np.random.RandomState(SEED))
@@ -171,6 +188,7 @@ def run_model():
         random_state=np.random.RandomState(SEED)
     )
 
+    ####################################################################################################################
     model2 = LightFM(loss='warp', no_components=NO_COMPONENTS,
                      learning_rate=LEARNING_RATE,
                      item_alpha=ITEM_ALPHA,
